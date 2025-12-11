@@ -1,0 +1,1610 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>SLAP-GAP</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2a9df4">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+body{margin:0;padding:0;font-family:Arial,sans-serif}
+#map{position:absolute;top:0;bottom:0;left:0;right:320px}
+#sidebar{position:absolute;right:0;top:0;bottom:0;width:320px;padding:12px;background:#f7f7f7;overflow:auto;border-left:1px solid #ccc}
+.btn{display:inline-block;padding:6px 10px;margin:3px 2px;background:#2a9df4;color:white;border-radius:4px;text-decoration:none;cursor:pointer;font-size:13px;border:none}
+.btn.small{padding:3px 6px;font-size:12px}
+input[type=text],input[type=number],input[type=password],textarea,select{width:100%;box-sizing:border-box;padding:6px;margin:3px 0}
+.coord-input-group{display:flex;gap:5px;margin:3px 0}
+.coord-input-group input{flex:1}
+.coord-input-group label{font-size:11px;color:#666}
+.waypoint-item{border-bottom:1px dashed #ccc;padding:4px;margin-bottom:4px}
+.area-item{border-bottom:1px dashed #ccc;padding:4px;margin-bottom:4px;background:#f0f0ff}
+.route-item{border-bottom:1px dashed #ccc;padding:4px;margin-bottom:4px;background:#f0fff0}
+.waypoint-actions{margin-top:4px}
+.small{font-size:12px;color:#666}
+#speedInput{width:60px;display:inline-block}
+#routeSummary{font-size:12px;margin-top:6px}
+#gpsInfo{font-size:13px;margin-top:8px;padding:8px;background:#e8f4f8;border-radius:4px;border-left:3px solid #2a9df4}
+#gpsInfo .gps-label{font-weight:bold;color:#2a9df4}
+#gpsInfo .gps-value{color:#333}
+#credit{font-size:12px;font-weight:bold;color:#333;margin-top:12px;text-align:center}
+#movingTrackInfo{font-size:13px;margin-top:8px;padding:8px;background:#e8f8e8;border-radius:4px;border-left:3px solid #00c853;display:none}
+#movingTrackInfo .track-label{font-weight:bold;color:#00c853}
+#movingTrackInfo .track-value{color:#333}
+#measurementInfo{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.9);color:white;padding:15px 25px;border-radius:10px;font-size:15px;z-index:3000;display:none;box-shadow:0 4px 20px rgba(0,0,0,0.5);pointer-events:none;min-width:280px}
+#measurementInfo .measure-label{font-weight:bold;color:#ffd700;display:inline-block;width:120px}
+#measurementInfo .measure-value{color:#fff;font-family:monospace;font-size:16px}
+#measurementInfo div{margin:5px 0}
+.measure-button-container{margin-bottom:8px}
+.measure-button-container .btn{width:48%;margin:1%}
+.area-label{background:transparent!important;border:none!important;box-shadow:none!important;font-weight:bold;color:#000;font-size:14px;white-space:nowrap;padding:0}
+.circular-area-label{background:transparent!important;border:none!important;box-shadow:none!important;font-weight:bold;color:#000;font-size:10px;white-space:nowrap;padding:0;text-shadow:1px 1px 2px white,-1px -1px 2px white,1px -1px 2px white,-1px 1px 2px white}
+#insecureOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;display:none;color:white;text-align:center;padding:50px 20px}
+#insecureOverlay h2{color:#ff5252;margin-bottom:20px}
+#insecureOverlay .btn{background:#ff5252}
+.modal{display:none;position:fixed;z-index:2000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.6)}
+.modal-content{background:#fff;margin:5% auto;padding:20px;width:90%;max-width:500px;max-height:80%;overflow-y:auto;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3)}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
+.modal-header h3{margin:0}
+.close{font-size:28px;font-weight:bold;color:#aaa;cursor:pointer}
+.close:hover{color:#000}
+.modal-list-item{padding:8px;margin-bottom:8px;background:#f9f9f9;border-radius:4px;border-left:3px solid #2a9df4}
+.info-text{font-size:11px;color:#666;margin-top:4px;font-style:italic}
+.color-picker{display:flex;gap:8px;margin:8px 0}
+.color-option{width:30px;height:30px;border-radius:50%;cursor:pointer;border:2px solid transparent}
+.color-option.selected{border:2px solid #000;box-shadow:0 0 8px rgba(0,0,0,0.3)}
+.area-type-buttons{display:flex;gap:10px;margin:10px 0}
+.area-type-btn{flex:1;padding:10px;border:2px solid #ccc;background:#f9f9f9;border-radius:5px;cursor:pointer;text-align:center;font-weight:bold}
+.area-type-btn.selected{border-color:#2a9df4;background:#e3f2fd}
+.export-option{padding:10px;margin:8px 0;border:2px solid #ccc;background:#f9f9f9;border-radius:5px;cursor:pointer}
+.export-option.selected{border-color:#2a9df4;background:#e3f2fd}
+.checkbox-item{padding:4px;margin:4px 0}
+.checkbox-item label{display:flex;align-items:center;cursor:pointer}
+#authModal{display:block}
+#mainApp{display:none}
+#mapToggleBtn{position:absolute;top:10px;right:10px;z-index:1000;padding:8px 12px;background:#28a745;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;box-shadow:0 2px 4px rgba(0,0,0,0.2)}
+#mapToggleBtn:hover{opacity:0.9}
+.moving-track-buttons{display:flex;gap:5px;margin-top:8px}
+.moving-track-buttons .btn{flex:1}
+</style>
+</head>
+<body>
+
+<div id="authModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header"><h3>🔐 Authentication Required</h3></div>
+    <p>Enter password to access the navigation app:</p>
+    <input type="password" id="authPassword" placeholder="Enter password" />
+    <button class="btn" onclick="authenticate()">Login</button>
+    <p id="authError" style="color:red;display:none">Incorrect password</p>
+  </div>
+</div>
+
+<div id="mainApp">
+  <div id="insecureOverlay" aria-hidden="true">
+    <h2>⚠️ Insecure Connection</h2>
+    <p>For GPS features to work, you need:</p>
+    <ul style="list-style:none;padding:0">
+      <li>✅ HTTPS connection, OR</li>
+      <li>✅ localhost/127.0.0.1</li>
+    </ul>
+    <p>Please use your GitHub Pages link or localhost.</p>
+    <button class="btn" id="hideOverlay">I Understand</button>
+  </div>
+
+  <button id="mapToggleBtn">🛰️ Satellite</button>
+
+  <div id="map"></div>
+
+  <div id="measurementInfo">
+    <div><span class="measure-label">Distance:</span> <span class="measure-value" id="measureDistance">0.00 NM</span></div>
+    <div><span class="measure-label">Bearing:</span> <span class="measure-value" id="measureBearing">0.0°</span></div>
+  </div>
+
+  <div id="sidebar">
+    <h3 style="margin-top:0">Navigation Tools</h3>
+
+    <div style="font-size:11px;color:#666;margin-bottom:8px" id="coordsOut">Click map to get coordinates</div>
+
+    <div class="coord-input-group">
+      <div style="flex:1">
+        <label>Lat Deg</label>
+        <input type="number" id="latDeg" placeholder="23">
+      </div>
+      <div style="flex:1">
+        <label>Lat Min</label>
+        <input type="number" id="latMin" step="0.001" placeholder="41.1">
+      </div>
+      <div style="flex:0.6">
+        <label>Dir</label>
+        <select id="latDir">
+          <option>N</option>
+          <option>S</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="coord-input-group">
+      <div style="flex:1">
+        <label>Lon Deg</label>
+        <input type="number" id="lonDeg" placeholder="90">
+      </div>
+      <div style="flex:1">
+        <label>Lon Min</label>
+        <input type="number" id="lonMin" step="0.001" placeholder="21.38">
+      </div>
+      <div style="flex:0.6">
+        <label>Dir</label>
+        <select id="lonDir">
+          <option>E</option>
+          <option>W</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="btn" id="goBtn">🎯 Go & Save</button>
+
+    <hr>
+
+    <button class="btn" id="showWaypointListBtn">📍 Waypoint List</button>
+    <button class="btn" id="showAreaListBtn">🗺️ Area List</button>
+    <button class="btn" id="showRouteListBtn">🛣️ Route List</button>
+
+    <hr>
+
+    <h4>Route Planning</h4>
+    <button class="btn" id="routeBtn">🛤️ Make Route (Selected)</button>
+    <button class="btn" id="clearRouteBtn" style="background:#dc3545">❌ Clear Route</button>
+    <button class="btn" id="saveRouteBtn" style="background:#28a745">💾 Save Current Route</button>
+
+    <div id="routeSummary"></div>
+
+    <hr>
+
+    <h4>Measurement Tool</h4>
+    <div class="measure-button-container">
+      <button class="btn" id="measureBtn">📏 Start Measure</button>
+      <button class="btn" id="stopMeasureBtn" style="background:#dc3545">⏹️ Stop</button>
+    </div>
+
+    <hr>
+
+    <h4>Direct-To Mode</h4>
+    <select id="directSelect">
+      <option value="">Choose Waypoint</option>
+    </select>
+    <button class="btn" id="startDirectBtn">▶️ Start Direct-To</button>
+    <button class="btn" id="stopDirectBtn" style="background:#dc3545">⏹️ Stop Direct-To</button>
+
+    <hr>
+
+    <h4>Flying Mode</h4>
+    <label>Aircraft Speed (kts):</label>
+    <input type="number" id="speedInput" value="120" />
+    <button class="btn" id="startFlyBtn">🚁 Start Flying</button>
+    <button class="btn" id="stopFlyBtn" style="background:#dc3545">⏹️ Stop Flying</button>
+    <button class="btn" id="recenterBtn" style="background:#6f42c1">🎯 Re-center</button>
+
+    <div id="gpsInfo" style="display:none">
+      <div><span class="gps-label">GPS Speed:</span> <span class="gps-value" id="gpsSpeed">0 kts</span></div>
+      <div><span class="gps-label">GPS Course:</span> <span class="gps-value" id="gpsCourse">0°</span></div>
+    </div>
+
+    <div class="moving-track-buttons">
+      <button class="btn" id="movingTrackOnBtn" style="background:#00c853">📍 Track ON</button>
+      <button class="btn" id="movingTrackOffBtn" style="background:#dc3545">⏹️ Track OFF</button>
+    </div>
+
+    <div id="movingTrackInfo">
+      <div><span class="track-label">Track Distance:</span> <span class="track-value" id="trackDistance">0.00 NM</span></div>
+      <div><span class="track-label">Track Course:</span> <span class="track-value" id="trackCourse">0.0°</span></div>
+      <div><span class="track-label">Track Speed:</span> <span class="track-value" id="trackSpeed">0 kts</span></div>
+    </div>
+
+    <hr>
+
+    <h4>Area Management</h4>
+    <button class="btn" id="createAreaBtn">➕ Create New Area</button>
+    <select id="editAreaSelect">
+      <option value="">Select Area to Edit</option>
+    </select>
+    <button class="btn" id="editAreaBtn">✏️ Edit Area</button>
+    <select id="deleteAreaSelect">
+      <option value="">Select Area to Delete</option>
+    </select>
+    <button class="btn" id="deleteAreaBtn" style="background:#dc3545">🗑️ Delete Area</button>
+
+    <hr>
+
+    <h4>Data Management</h4>
+    <button class="btn" id="saveBtn" style="background:#28a745">💾 Save All</button>
+    <button class="btn" id="exportBtn">📤 Export</button>
+
+    <h4>Import JSON</h4>
+    <textarea id="jsonArea" rows="3" placeholder='{"waypoints":[...],"areas":[...],"routes":[...]}'></textarea>
+    <button class="btn" id="importBtn">📥 Import</button>
+
+    <div id="credit">© 2024 Sadman</div>
+  </div>
+
+  <!-- Waypoint List Modal -->
+  <div id="waypointListModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>📍 Waypoint List</h3>
+        <span class="close" id="closeWaypointListBtn">&times;</span>
+      </div>
+      <div id="waypointListContent"></div>
+    </div>
+  </div>
+
+  <!-- Area List Modal -->
+  <div id="areaListModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🗺️ Area List</h3>
+        <span class="close" id="closeAreaListBtn">&times;</span>
+      </div>
+      <div id="areaListContent"></div>
+    </div>
+  </div>
+
+  <!-- Route List Modal -->
+  <div id="routeListModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🛣️ Route List</h3>
+        <span class="close" id="closeRouteListBtn">&times;</span>
+      </div>
+      <div id="routeListContent"></div>
+    </div>
+  </div>
+
+  <!-- Save Route Modal -->
+  <div id="saveRouteModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>💾 Save Route</h3>
+        <span class="close" id="closeSaveRouteBtn">&times;</span>
+      </div>
+      <label>Route Name:</label>
+      <input type="text" id="routeName" placeholder="Enter route name" />
+      <label>Comments:</label>
+      <textarea id="routeComments" rows="3" placeholder="Add comments about this route"></textarea>
+      <button class="btn" id="confirmSaveRouteBtn" style="background:#28a745">💾 Save Route</button>
+      <button class="btn" id="cancelSaveRouteBtn" style="background:#dc3545">❌ Cancel</button>
+    </div>
+  </div>
+
+  <!-- Area Modal -->
+  <div id="areaModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">Create New Area</h3>
+        <span class="close" id="closeModalBtn">&times;</span>
+      </div>
+
+      <div class="area-type-buttons">
+        <div class="area-type-btn selected" data-type="polygon">📐 Polygon</div>
+        <div class="area-type-btn" data-type="circular">⭕ Circular</div>
+      </div>
+
+      <div id="polygonSection">
+        <label>Number of Corners:</label>
+        <input type="number" id="numCorners" min="3" value="4" />
+        <button class="btn" id="setCornerBtn">Set Corners</button>
+        <div id="cornerInputs"></div>
+      </div>
+
+      <div id="circularSection" style="display:none">
+        <label>Select Center Waypoint:</label>
+        <select id="circularWaypointSelect"></select>
+        <label>Diameter (NM):</label>
+        <input type="number" id="circularDiameter" min="0.1" step="0.1" value="5" />
+      </div>
+
+      <div id="nameSection" style="display:none">
+        <label>Area Name:</label>
+        <input type="text" id="areaName" placeholder="Enter area name" />
+        <label>Area Info (optional):</label>
+        <textarea id="areaInfo" rows="2" placeholder="Additional information"></textarea>
+        <label>Area Color:</label>
+        <div class="color-picker" id="colorPicker">
+          <div class="color-option selected" data-color="#8b45c1" style="background:#8b45c1"></div>
+          <div class="color-option" data-color="#ff0000" style="background:#ff0000"></div>
+          <div class="color-option" data-color="#00ff00" style="background:#00ff00"></div>
+          <div class="color-option" data-color="#0000ff" style="background:#0000ff"></div>
+          <div class="color-option" data-color="#ffff00" style="background:#ffff00"></div>
+          <div class="color-option" data-color="#ff00ff" style="background:#ff00ff"></div>
+          <div class="color-option" data-color="#00ffff" style="background:#00ffff"></div>
+          <div class="color-option" data-color="#ffa500" style="background:#ffa500"></div>
+        </div>
+        <div id="polygonButtons" style="display:none">
+          <button class="btn" id="saveAreaBtn" style="background:#28a745">💾 Save Area</button>
+          <button class="btn" id="cancelAreaBtn" style="background:#dc3545">❌ Cancel</button>
+        </div>
+        <div id="circularButtons" style="display:none">
+          <button class="btn" id="saveCircularAreaBtn" style="background:#28a745">💾 Save Circular Area</button>
+          <button class="btn" id="cancelCircularAreaBtn" style="background:#dc3545">❌ Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export Modal -->
+  <div id="exportModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>📤 Export Data</h3>
+        <span class="close" id="closeExportModalBtn">&times;</span>
+      </div>
+      <p>Select what to export:</p>
+      <div class="export-option" data-type="all">📦 Everything (Waypoints + Areas + Routes)</div>
+      <div class="export-option" data-type="waypoints-only">📍 Waypoints Only</div>
+      <div class="export-option" data-type="areas-only">🗺️ Areas Only</div>
+      <div class="export-option" data-type="routes-only">🛣️ Routes Only</div>
+      <div class="export-option" data-type="selected-waypoints">✅ Selected Waypoints</div>
+      <div class="export-option" data-type="selected-areas">✅ Selected Areas</div>
+      <div class="export-option" data-type="selected-routes">✅ Selected Routes</div>
+      <div class="export-option" data-type="custom">🎛️ Custom Selection</div>
+
+      <div id="waypointSelection" style="display:none;margin-top:10px">
+        <h4>Select Waypoints:</h4>
+        <button class="btn small" id="selectAllWaypoints">Select All</button>
+        <button class="btn small" id="deselectAllWaypoints">Deselect All</button>
+        <div id="waypointCheckboxList" style="max-height:200px;overflow-y:auto;margin-top:5px"></div>
+      </div>
+
+      <div id="areaSelection" style="display:none;margin-top:10px">
+        <h4>Select Areas:</h4>
+        <button class="btn small" id="selectAllAreas">Select All</button>
+        <button class="btn small" id="deselectAllAreas">Deselect All</button>
+        <div id="areaCheckboxList" style="max-height:200px;overflow-y:auto;margin-top:5px"></div>
+      </div>
+
+      <div id="routeSelection" style="display:none;margin-top:10px">
+        <h4>Select Routes:</h4>
+        <button class="btn small" id="selectAllRoutes">Select All</button>
+        <button class="btn small" id="deselectAllRoutes">Deselect All</button>
+        <div id="routeCheckboxList" style="max-height:200px;overflow-y:auto;margin-top:5px"></div>
+      </div>
+
+      <button class="btn" id="confirmExportBtn" style="background:#28a745;margin-top:10px">📤 Export</button>
+      <button class="btn" id="cancelExportBtn" style="background:#dc3545">❌ Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const CORRECT_PASSWORD='sadman';
+function checkAuthentication(){const storedHash=localStorage.getItem('auth_hash');storedHash===btoa(CORRECT_PASSWORD)?showApp():showAuthModal()}
+function showAuthModal(){document.getElementById('authModal').style.display='block',document.getElementById('mainApp').style.display='none'}
+function showApp(){document.getElementById('authModal').style.display='none',document.getElementById('mainApp').style.display='block',initializeApp()}
+function authenticate(){const password=document.getElementById('authPassword').value;password===CORRECT_PASSWORD?(localStorage.setItem('auth_hash',btoa(password)),showApp()):(document.getElementById('authError').style.display='block',setTimeout(()=>{document.getElementById('authError').style.display='none'},3e3))}
+
+const MARKER_TYPES={default:{label:'Waypoint',color:'#2a9df4',icon:'📍'},airport:{label:'Airport',color:'#ff6b6b',icon:'✈️'},helipad:{label:'Helipad',color:'#4ecdc4',icon:'🚁'},hospital:{label:'Hospital',color:'#ff0000',icon:'🏥'},poi:{label:'Point of Interest',color:'#ffd93d',icon:'⭐'},danger:{label:'Danger Zone',color:'#d10000',icon:'⚠️'},fuel:{label:'Fuel Station',color:'#6bcf7f',icon:'⛽'},vip:{label:'VIP Location',color:'#9b59b6',icon:'👑'}};
+
+function DMSToDecimal(deg,min,dir){let dec=deg+min/60;return'S'===dir||'W'===dir?-dec:dec}
+function formatDMS(coord,isLat){const abs=Math.abs(coord),deg=Math.floor(abs),min=(abs-deg)*60,dir=isLat?coord>=0?'N':'S':coord>=0?'E':'W';return`${deg}° ${min.toFixed(3)}' ${dir}`}
+function haversineNM(lat1,lon1,lat2,lon2){const toRad=deg=>deg*Math.PI/180,R=3440.065,dLat=toRad(lat2-lat1),dLon=toRad(lon2-lon1),a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)*Math.sin(dLon/2);return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))}
+function bearing(lat1,lon1,lat2,lon2){const toRad=deg=>deg*Math.PI/180,toDeg=rad=>rad*180/Math.PI,dLon=toRad(lon2-lon1),y=Math.sin(dLon)*Math.cos(toRad(lat2)),x=Math.cos(toRad(lat1))*Math.sin(toRad(lat2))-Math.sin(toRad(lat1))*Math.cos(toRad(lat2))*Math.cos(dLon);return(toDeg(Math.atan2(y,x))+360)%360}
+
+function createHelicopterIcon(rotation){const svgIcon=`<svg width="32" height="32" viewBox="-16 -16 32 32" xmlns="http://www.w3.org/2000/svg" style="transform:rotate(${rotation}deg)">
+    <g>
+      <rect x="-1.5" y="-8" width="3" height="16" fill="#2c1810" rx="1"/>
+      <rect x="-10" y="-2" width="20" height="2" fill="#2c1810" rx="1"/>
+      <circle cx="0" cy="0" r="3" fill="#8b0000"/>
+      <line x1="-15" y1="-10" x2="15" y2="-10" stroke="#4a4a4a" stroke-width="1.5"/>
+      <path d="M 0,-8 L 3,-12 L 0,-11 L -3,-12 Z" fill="#2c1810"/>
+    </g>
+  </svg>`;
+  return L.divIcon({
+    html: svgIcon,
+    className: 'custom-marker',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16]
+  });
+}
+
+function initializeApp(){const insecureOverlay=document.getElementById('insecureOverlay');function checkSecureContextAndWarn(){const isLocalhost='localhost'===location.hostname||'127.0.0.1'===location.hostname;('https:'===location.protocol||isLocalhost)||(insecureOverlay.style.display='block',insecureOverlay.setAttribute('aria-hidden','false'))}document.getElementById('hideOverlay').onclick=()=>{insecureOverlay.style.display='none',insecureOverlay.setAttribute('aria-hidden','true')},checkSecureContextAndWarn();const map=L.map('map',{zoomControl:!0,dragging:!0,touchZoom:!0,doubleClickZoom:!0,scrollWheelZoom:!0}).setView([23.685,90.3563],7);const normalLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap contributors'}).addTo(map),satelliteLayer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:18,attribution:'Esri, DigitalGlobe, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community'});let currentLayer='normal';const mapToggleBtn=document.getElementById('mapToggleBtn');mapToggleBtn.onclick=function(e){e.stopPropagation(),'normal'===currentLayer?(map.removeLayer(normalLayer),map.addLayer(satelliteLayer),currentLayer='satellite',mapToggleBtn.innerHTML='🗺️ Normal',mapToggleBtn.style.background='#007bff'):(map.removeLayer(satelliteLayer),map.addLayer(normalLayer),currentLayer='normal',mapToggleBtn.innerHTML='🛰️ Satellite',mapToggleBtn.style.background='#28a745')};let waypoints=[],markers={},selected=[],routeLayer=null,checkpointMarkers=[],flyMarker=null,flyWatchId=null,directLayer=null,directTargetId=null,lastSpeedGPS=0,lastCourseGPS=0,areas=[],areaPolygons={},routes=[],editingAreaId=null,measurementLine=null,measureStartMarker=null,measureEndMarker=null,measureActive=!1,movingTrackLine=null,movingTrackActive=!1,movingTrackUpdateInterval=null,pendingTapLocation=null;const coordsOut=document.getElementById('coordsOut'),routeSummaryDiv=document.getElementById('routeSummary'),directSelect=document.getElementById('directSelect'),recenterBtn=document.getElementById('recenterBtn'),editAreaSelect=document.getElementById('editAreaSelect'),deleteAreaSelect=document.getElementById('deleteAreaSelect'),gpsInfoDiv=document.getElementById('gpsInfo'),gpsSpeedSpan=document.getElementById('gpsSpeed'),gpsCourseSpan=document.getElementById('gpsCourse'),measurementInfoDiv=document.getElementById('measurementInfo'),measureBtn=document.getElementById('measureBtn'),stopMeasureBtn=document.getElementById('stopMeasureBtn'),movingTrackOnBtn=document.getElementById('movingTrackOnBtn'),movingTrackOffBtn=document.getElementById('movingTrackOffBtn'),movingTrackInfoDiv=document.getElementById('movingTrackInfo'),trackDistanceSpan=document.getElementById('trackDistance'),trackCourseSpan=document.getElementById('trackCourse'),trackSpeedSpan=document.getElementById('trackSpeed');
+
+// Waypoint list modal
+document.getElementById('showWaypointListBtn').onclick = function() {
+  const modal = document.getElementById('waypointListModal');
+  const content = document.getElementById('waypointListContent');
+  content.innerHTML = '';
+  
+  if (waypoints.length === 0) {
+    content.innerHTML = '<p style="text-align:center;color:#999">No waypoints saved yet</p>';
+  } else {
+    waypoints.forEach(w => {
+      const markerType = MARKER_TYPES[w.markerType || 'default'];
+      const div = document.createElement('div');
+      div.className = 'modal-list-item';
+      div.innerHTML = `<b>${w.name}</b> <span style="font-size:10px; color:${markerType.color};">●</span><br>
+        <span class="small">${formatDMS(w.lat, true)}, ${formatDMS(w.lon, false)} - ${markerType.label}</span>
+        ${w.info ? `<div class="info-text">${w.info}</div>` : ''}
+        <div class="waypoint-actions">
+          <a class="btn small" onclick="editWaypoint(${w.id})">✏️ Edit</a>
+          <a class="btn small" style="background:#dc3545" onclick="deleteWaypoint(${w.id})">🗑️ Delete</a>
+          <a class="btn small" style="background:#6f42c1" onclick="selectWaypoint(${w.id})">🎯 Select</a>
+        </div>`;
+      content.appendChild(div);
+    });
+  }
+  modal.style.display = 'block';
+};
+
+document.getElementById('closeWaypointListBtn').onclick = function() {
+  document.getElementById('waypointListModal').style.display = 'none';
+};
+
+// Area list modal
+document.getElementById('showAreaListBtn').onclick = function() {
+  const modal = document.getElementById('areaListModal');
+  const content = document.getElementById('areaListContent');
+  content.innerHTML = '';
+  
+  if (areas.length === 0) {
+    content.innerHTML = '<p style="text-align:center;color:#999">No areas saved yet</p>';
+  } else {
+    areas.forEach(area => {
+      const div = document.createElement('div');
+      div.className = 'modal-list-item';
+      const areaTypeLabel = area.type === 'circular' ? '⭕ Circular' : '📐 Polygon';
+      const detailText = area.type === 'circular' 
+        ? `Diameter: ${area.diameter} NM, Center: ${area.centerWaypoint}`
+        : `${area.corners.length} corners`;
+      
+      div.innerHTML = `<b>${area.name}</b> <span style="color:${area.color || '#8b45c1'};">●</span> ${areaTypeLabel}<br>
+        <span class="small">${detailText}</span>
+        ${area.info ? `<div class="info-text">${area.info}</div>` : ''}`;
+      content.appendChild(div);
+    });
+  }
+  modal.style.display = 'block';
+};
+
+document.getElementById('closeAreaListBtn').onclick = function() {
+  document.getElementById('areaListModal').style.display = 'none';
+};
+
+// Route list modal
+document.getElementById('showRouteListBtn').onclick = function() {
+  const modal = document.getElementById('routeListModal');
+  const content = document.getElementById('routeListContent');
+  content.innerHTML = '';
+  
+  if (routes.length === 0) {
+    content.innerHTML = '<p style="text-align:center;color:#999">No routes saved yet</p>';
+  } else {
+    routes.forEach(route => {
+      const div = document.createElement('div');
+      div.className = 'modal-list-item';
+      const totalDistance = route.totalDistance || 0;
+      const waypointNames = route.waypoints.map(wp => wp.name).join(' → ');
+      
+      div.innerHTML = `<b>${route.name}</b> <span style="color:#28a745;">●</span><br>
+        <span class="small">Distance: ${totalDistance.toFixed(2)} NM | Waypoints: ${route.waypoints.length}</span><br>
+        <span class="small">${waypointNames}</span>
+        ${route.comments ? `<div class="info-text">${route.comments}</div>` : ''}
+        <div class="waypoint-actions">
+          <a class="btn small" onclick="loadRoute(${route.id})">📍 Load</a>
+          <a class="btn small" style="background:#dc3545" onclick="deleteRoute(${route.id})">🗑️ Delete</a>
+        </div>`;
+      content.appendChild(div);
+    });
+  }
+  modal.style.display = 'block';
+};
+
+document.getElementById('closeRouteListBtn').onclick = function() {
+  document.getElementById('routeListModal').style.display = 'none';
+};
+
+// Moving track functionality
+movingTrackOnBtn.onclick = startMovingTrack;
+movingTrackOffBtn.onclick = stopMovingTrack;
+
+function startMovingTrack() {
+  if (!flyMarker) {
+    alert('Start Flying or Direct-To mode first');
+    return;
+  }
+  movingTrackActive = true;
+  movingTrackInfoDiv.style.display = 'block';
+  if (!movingTrackLine) {
+    movingTrackLine = L.polyline([], { color: '#00c853', weight: 3 }).addTo(map);
+  }
+  movingTrackUpdateInterval = setInterval(updateMovingTrack, 2000);
+}
+
+function stopMovingTrack() {
+  movingTrackActive = false;
+  movingTrackInfoDiv.style.display = 'none';
+  if (movingTrackLine) {
+    map.removeLayer(movingTrackLine);
+    movingTrackLine = null;
+  }
+  if (movingTrackUpdateInterval) {
+    clearInterval(movingTrackUpdateInterval);
+    movingTrackUpdateInterval = null;
+  }
+}
+
+function updateMovingTrack() {
+  if (!flyMarker || !movingTrackActive) return;
+  const currentPos = flyMarker.getLatLng();
+  const latlngs = movingTrackLine.getLatLngs();
+  latlngs.push(currentPos);
+  movingTrackLine.setLatLngs(latlngs);
+  
+  if (latlngs.length > 1) {
+    let totalDist = 0;
+    for (let i = 0; i < latlngs.length - 1; i++) {
+      totalDist += haversineNM(latlngs[i].lat, latlngs[i].lng, latlngs[i + 1].lat, latlngs[i + 1].lng);
+    }
+    trackDistanceSpan.textContent = totalDist.toFixed(2) + ' NM';
+    
+    const last = latlngs[latlngs.length - 1];
+    const prev = latlngs[latlngs.length - 2];
+    const course = bearing(prev.lat, prev.lng, last.lat, last.lng);
+    trackCourseSpan.textContent = course.toFixed(1) + '°';
+    trackSpeedSpan.textContent = lastSpeedGPS.toFixed(1) + ' kts';
+  }
+}
+
+// Measurement tool
+measureBtn.onclick = function() {
+  if (measureActive) return;
+  measureActive = true;
+  measurementInfoDiv.style.display = 'block';
+  map.getContainer().style.cursor = 'crosshair';
+  
+  const tempClickHandler = function(e) {
+    if (!measureStartMarker) {
+      measureStartMarker = L.circleMarker(e.latlng, { color: '#ffd700', radius: 6 }).addTo(map);
+      measurementLine = L.polyline([e.latlng], { color: '#ffd700', weight: 3, dashArray: '5, 10' }).addTo(map);
+    } else {
+      measureEndMarker = L.circleMarker(e.latlng, { color: '#ffd700', radius: 6 }).addTo(map);
+      measurementLine.addLatLng(e.latlng);
+      
+      const latlngs = measurementLine.getLatLngs();
+      const start = latlngs[0];
+      const end = latlngs[latlngs.length - 1];
+      const dist = haversineNM(start.lat, start.lng, end.lat, end.lng);
+      const brg = bearing(start.lat, start.lng, end.lat, end.lng);
+      
+      document.getElementById('measureDistance').textContent = dist.toFixed(2) + ' NM';
+      document.getElementById('measureBearing').textContent = brg.toFixed(1) + '°';
+    }
+  };
+  
+  map.on('click', tempClickHandler);
+  map._measureClickHandler = tempClickHandler;
+};
+
+stopMeasureBtn.onclick = function() {
+  if (!measureActive) return;
+  measureActive = false;
+  measurementInfoDiv.style.display = 'none';
+  map.getContainer().style.cursor = '';
+  
+  if (measureStartMarker) {
+    map.removeLayer(measureStartMarker);
+    measureStartMarker = null;
+  }
+  if (measureEndMarker) {
+    map.removeLayer(measureEndMarker);
+    measureEndMarker = null;
+  }
+  if (measurementLine) {
+    map.removeLayer(measurementLine);
+    measurementLine = null;
+  }
+  
+  if (map._measureClickHandler) {
+    map.off('click', map._measureClickHandler);
+    delete map._measureClickHandler;
+  }
+};
+
+// Area type selection
+document.querySelectorAll('.area-type-btn').forEach(btn => {
+  btn.onclick = function() {
+    document.querySelectorAll('.area-type-btn').forEach(b => b.classList.remove('selected'));
+    this.classList.add('selected');
+    
+    const type = this.dataset.type;
+    const polygonSection = document.getElementById('polygonSection');
+    const circularSection = document.getElementById('circularSection');
+    const polygonButtons = document.getElementById('polygonButtons');
+    const circularButtons = document.getElementById('circularButtons');
+    
+    if (type === 'polygon') {
+      polygonSection.style.display = 'block';
+      circularSection.style.display = 'none';
+      polygonButtons.style.display = 'block';
+      circularButtons.style.display = 'none';
+    } else {
+      polygonSection.style.display = 'none';
+      circularSection.style.display = 'block';
+      polygonButtons.style.display = 'none';
+      circularButtons.style.display = 'block';
+    }
+  };
+});
+
+// Color picker
+document.querySelectorAll('.color-option').forEach(opt => {
+  opt.onclick = function() {
+    document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+    this.classList.add('selected');
+  };
+});
+
+// Close modal button
+document.getElementById('closeModalBtn').onclick = closeAreaModal;
+
+function createCornerInputs(numCorners) {
+  const div = document.getElementById('cornerInputs');
+  div.innerHTML = '';
+  
+  for (let i = 1; i <= numCorners; i++) {
+    const cornerDiv = document.createElement('div');
+    cornerDiv.innerHTML = `<h5>Corner ${i}</h5>
+      <div class="coord-input-group">
+        <div style="flex:1"><label>Lat Deg</label><input type="number" class="corner-lat-deg" placeholder="23" /></div>
+        <div style="flex:1"><label>Lat Min</label><input type="number" class="corner-lat-min" step="0.001" placeholder="41.1" /></div>
+        <div style="flex:0.6"><label>Dir</label><select class="corner-lat-dir"><option>N</option><option>S</option></select></div>
+      </div>
+      <div class="coord-input-group">
+        <div style="flex:1"><label>Lon Deg</label><input type="number" class="corner-lon-deg" placeholder="90" /></div>
+        <div style="flex:1"><label>Lon Min</label><input type="number" class="corner-lon-min" step="0.001" placeholder="21.38" /></div>
+        <div style="flex:0.6"><label>Dir</label><select class="corner-lon-dir"><option>E</option><option>W</option></select></div>
+      </div>`;
+    div.appendChild(cornerDiv);
+  }
+  
+  document.getElementById('nameSection').style.display = 'block';
+}
+
+map.on('click', function(e) {
+  if (measureActive) return;
+  const { lat, lng } = e.latlng;
+  coordsOut.textContent = formatDMS(lat, true) + ', ' + formatDMS(lng, false);
+  pendingTapLocation = { lat, lng };
+});
+
+function updateGPSInfo(speed, course) {
+  lastSpeedGPS = speed;
+  lastCourseGPS = course;
+  gpsSpeedSpan.textContent = speed.toFixed(1) + ' kts';
+  gpsCourseSpan.textContent = course.toFixed(1) + '°';
+}
+
+function addWaypoint(lat, lon, name, markerType = 'default', info = '') {
+  const id = Date.now() + Math.floor(Math.random() * 999);
+  waypoints.push({ id, lat, lon, name, markerType, info });
+  addMarker(id, lat, lon, name, markerType);
+  updateDirectSelect();
+  saveLocal();
+}
+
+function addWaypointNoSave(lat, lon, name, markerType = 'default', info = '') {
+  const id = Date.now() + Math.floor(Math.random() * 999);
+  waypoints.push({ id, lat, lon, name, markerType, info });
+  addMarker(id, lat, lon, name, markerType);
+  updateDirectSelect();
+}
+
+function addMarker(id, lat, lon, name, markerType = 'default') {
+  const type = MARKER_TYPES[markerType] || MARKER_TYPES.default;
+  const marker = L.marker([lat, lon], {
+    icon: L.divIcon({
+      html: `<div style="font-size:24px">${type.icon}</div>`,
+      className: 'custom-icon',
+      iconSize: [24, 24],
+      iconAnchor: [12, 24]
+    })
+  }).addTo(map);
+  
+  marker.bindPopup(`<b>${name}</b><br>${formatDMS(lat, true)}<br>${formatDMS(lon, false)}`);
+  marker.on('click', () => selectWaypoint(id));
+  markers[id] = marker;
+}
+
+function selectWaypoint(id) {
+  if (selected.includes(id)) {
+    selected = selected.filter(s => s !== id);
+    markers[id].setIcon(L.divIcon({
+      html: `<div style="font-size:24px">${MARKER_TYPES[waypoints.find(w => w.id === id).markerType || 'default'].icon}</div>`,
+      className: 'custom-icon',
+      iconSize: [24, 24],
+      iconAnchor: [12, 24]
+    }));
+  } else {
+    selected.push(id);
+    markers[id].setIcon(L.divIcon({
+      html: `<div style="font-size:24px;background:yellow;border-radius:50%">${MARKER_TYPES[waypoints.find(w => w.id === id).markerType || 'default'].icon}</div>`,
+      className: 'custom-icon',
+      iconSize: [24, 24],
+      iconAnchor: [12, 24]
+    }));
+  }
+}
+
+function editWaypoint(id) {
+  const wp = waypoints.find(w => w.id === id);
+  if (!wp) return;
+  
+  const newName = prompt('Edit waypoint name:', wp.name);
+  if (newName) {
+    wp.name = newName;
+    markers[id].setPopupContent(`<b>${newName}</b><br>${formatDMS(wp.lat, true)}<br>${formatDMS(wp.lon, false)}`);
+    updateDirectSelect();
+    saveLocal();
+    document.getElementById('showWaypointListBtn').onclick();
+  }
+}
+
+function deleteWaypoint(id) {
+  if (!confirm('Delete this waypoint?')) return;
+  waypoints = waypoints.filter(w => w.id !== id);
+  map.removeLayer(markers[id]);
+  delete markers[id];
+  selected = selected.filter(s => s !== id);
+  updateDirectSelect();
+  saveLocal();
+  document.getElementById('showWaypointListBtn').onclick();
+}
+
+function updateDirectSelect() {
+  directSelect.innerHTML = '<option value="">Choose Waypoint</option>';
+  waypoints.forEach(w => {
+    const opt = document.createElement('option');
+    opt.value = w.id;
+    opt.text = w.name;
+    directSelect.appendChild(opt);
+  });
+}
+
+function makeRoute() {
+  if (selected.length < 2) {
+    alert('Select at least 2 waypoints');
+    return;
+  }
+  
+  clearRoute();
+  
+  const routeWaypoints = selected.map(id => waypoints.find(w => w.id === id));
+  const latlngs = routeWaypoints.map(w => [w.lat, w.lon]);
+  
+  routeLayer = L.polyline(latlngs, { color: '#2a9df4', weight: 3 }).addTo(map);
+  
+  routeWaypoints.forEach((w, i) => {
+    if (i < routeWaypoints.length - 1) {
+      const marker = L.circleMarker([w.lat, w.lon], {
+        radius: 5,
+        fillColor: '#2a9df4',
+        fillOpacity: 1,
+        color: '#fff',
+        weight: 2
+      }).addTo(map);
+      checkpointMarkers.push(marker);
+    }
+  });
+  
+  updateRouteSummary();
+}
+
+function clearRoute() {
+  if (routeLayer) {
+    map.removeLayer(routeLayer);
+    routeLayer = null;
+  }
+  checkpointMarkers.forEach(m => map.removeLayer(m));
+  checkpointMarkers = [];
+  routeSummaryDiv.innerHTML = '';
+}
+
+function updateRouteSummary() {
+  if (!routeLayer) return;
+  
+  const routeWaypoints = selected.map(id => waypoints.find(w => w.id === id));
+  let totalDist = 0;
+  let summary = '<b>Route:</b><br>';
+  
+  for (let i = 0; i < routeWaypoints.length - 1; i++) {
+    const w1 = routeWaypoints[i];
+    const w2 = routeWaypoints[i + 1];
+    const dist = haversineNM(w1.lat, w1.lon, w2.lat, w2.lon);
+    const brg = bearing(w1.lat, w1.lon, w2.lat, w2.lon);
+    totalDist += dist;
+    summary += `${w1.name} → ${w2.name}: ${dist.toFixed(2)} NM, ${brg.toFixed(1)}°<br>`;
+  }
+  
+  const inputSpeed = parseFloat(document.getElementById('speedInput').value) || 0;
+  const etaInput = inputSpeed > 0 ? (totalDist / inputSpeed * 60).toFixed(1) + ' min' : 'N/A';
+  const etaGPS = lastSpeedGPS > 0 ? (totalDist / lastSpeedGPS * 60).toFixed(1) + ' min' : 'N/A';
+  
+  summary += `<b>Total: ${totalDist.toFixed(2)} NM</b><br>`;
+  summary += `ETA Input: ${etaInput}<br>`;
+  summary += `ETA GPS: ${etaGPS}`;
+  
+  routeSummaryDiv.innerHTML = summary;
+}
+
+function renderAreaList(){editAreaSelect.innerHTML='<option value="">Select Area to Edit</option>',deleteAreaSelect.innerHTML='<option value="">Select Area to Delete</option>',areas.forEach(area=>{const editOpt=document.createElement('option');editOpt.value=area.id,editOpt.text=area.name,editAreaSelect.appendChild(editOpt);const delOpt=document.createElement('option');delOpt.value=area.id,delOpt.text=area.name,deleteAreaSelect.appendChild(delOpt)})}
+
+function drawArea(area) {
+  areaPolygons[area.id] && map.removeLayer(areaPolygons[area.id]);
+  
+  if (area.type === 'circular') {
+    const centerWp = waypoints.find(w => w.name === area.centerWaypoint);
+    if (!centerWp) return;
+    
+    const radiusMeters = (area.diameter / 2) * 1852;
+    const circle = L.circle([centerWp.lat, centerWp.lon], {
+      radius: radiusMeters,
+      color: area.color || '#ff0000',
+      fillColor: 'transparent',
+      fillOpacity: 0,
+      weight: 3
+    }).addTo(map);
+    
+    // Create text along circumference
+    const numLabels = 8;
+    const angleStep = 360 / numLabels;
+    
+    for (let i = 0; i < numLabels; i++) {
+      const angle = i * angleStep;
+      const rad = angle * Math.PI / 180;
+      
+      // Calculate position on circumference
+      const latOffset = (radiusMeters / 111320) * Math.cos(rad);
+      const lonOffset = (radiusMeters / (111320 * Math.cos(centerWp.lat * Math.PI / 180))) * Math.sin(rad);
+      
+      const labelLat = centerWp.lat + latOffset;
+      const labelLon = centerWp.lon + lonOffset;
+      
+      // Create a marker for each text segment
+      const labelMarker = L.marker([labelLat, labelLon], {
+        icon: L.divIcon({
+          html: `<div style="transform:rotate(${angle + 90}deg);font-size:10px;font-weight:bold;color:${area.color || '#ff0000'};text-shadow:1px 1px 2px white,-1px -1px 2px white,1px -1px 2px white,-1px 1px 2px white;white-space:nowrap">${area.name}</div>`,
+          className: 'circular-area-label',
+          iconSize: [0, 0],
+          iconAnchor: [0, 0]
+        })
+      }).addTo(map);
+      
+      if (!areaPolygons[area.id + '_labels']) {
+        areaPolygons[area.id + '_labels'] = [];
+      }
+      areaPolygons[area.id + '_labels'].push(labelMarker);
+    }
+    
+    areaPolygons[area.id] = circle;
+  } else {
+    const latlngs = area.corners.map(c => [c.lat, c.lon]);
+    const areaColor = area.color || '#8b45c1';
+    const polygon = L.polygon(latlngs, {
+      color: areaColor,
+      fillColor: areaColor,
+      fillOpacity: 0.2,
+      weight: 2
+    }).addTo(map);
+    
+    polygon.bindTooltip(area.name, {
+      permanent: true,
+      direction: 'center',
+      className: 'area-label',
+      opacity: 0.8
+    });
+    
+    areaPolygons[area.id] = polygon;
+  }
+}
+
+function showAreaModal(editMode = false, areaId = null) {
+  const modal = document.getElementById('areaModal');
+  const modalTitle = document.getElementById('modalTitle');
+  const polygonSection = document.getElementById('polygonSection');
+  const circularSection = document.getElementById('circularSection');
+  const numCornersInput = document.getElementById('numCorners');
+  const cornerInputsDiv = document.getElementById('cornerInputs');
+  const nameSection = document.getElementById('nameSection');
+  const areaNameInput = document.getElementById('areaName');
+  const areaInfoInput = document.getElementById('areaInfo');
+  const circularWaypointSelect = document.getElementById('circularWaypointSelect');
+  
+  modal.style.display = 'block';
+  cornerInputsDiv.innerHTML = '';
+  nameSection.style.display = 'none';
+  
+  circularWaypointSelect.innerHTML = '<option value="">Choose waypoint as center</option>';
+  waypoints.forEach(w => {
+    const opt = document.createElement('option');
+    opt.value = w.name;
+    opt.text = w.name;
+    circularWaypointSelect.appendChild(opt);
+  });
+  
+  document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('selected'));
+  document.querySelector('.color-option[data-color="#8b45c1"]').classList.add('selected');
+  
+  if (editMode && areaId) {
+    editingAreaId = areaId;
+    const area = areas.find(a => a.id === areaId);
+    if (!area) return;
+    
+    modalTitle.textContent = 'Edit Area';
+    areaNameInput.value = area.name;
+    areaInfoInput.value = area.info || '';
+    
+    document.querySelectorAll('.color-option').forEach(opt => {
+      if (opt.dataset.color === area.color) {
+        opt.classList.add('selected');
+      }
+    });
+    
+    if (area.type === 'circular') {
+      document.querySelector('.area-type-btn[data-type="circular"]').click();
+      circularWaypointSelect.value = area.centerWaypoint;
+      document.getElementById('circularDiameter').value = area.diameter;
+      nameSection.style.display = 'block';
+    } else {
+      document.querySelector('.area-type-btn[data-type="polygon"]').click();
+      numCornersInput.value = area.corners.length;
+      createCornerInputs(area.corners.length);
+      
+      area.corners.forEach((corner, i) => {
+        const cornerDivs = cornerInputsDiv.children[i];
+        const latDeg = Math.floor(Math.abs(corner.lat));
+        const latMin = (Math.abs(corner.lat) - latDeg) * 60;
+        const lonDeg = Math.floor(Math.abs(corner.lon));
+        const lonMin = (Math.abs(corner.lon) - lonDeg) * 60;
+        
+        cornerDivs.querySelector('.corner-lat-deg').value = latDeg;
+        cornerDivs.querySelector('.corner-lat-min').value = latMin.toFixed(3);
+        cornerDivs.querySelector('.corner-lat-dir').value = corner.lat >= 0 ? 'N' : 'S';
+        cornerDivs.querySelector('.corner-lon-deg').value = lonDeg;
+        cornerDivs.querySelector('.corner-lon-min').value = lonMin.toFixed(3);
+        cornerDivs.querySelector('.corner-lon-dir').value = corner.lon >= 0 ? 'E' : 'W';
+      });
+    }
+  } else {
+    editingAreaId = null;
+    modalTitle.textContent = 'Create New Area';
+    document.querySelector('.area-type-btn[data-type="polygon"]').click();
+  }
+}
+
+function saveArea() {
+  const cornerDivs = document.getElementById('cornerInputs').children;
+  const areaName = document.getElementById('areaName').value;
+  const areaInfo = document.getElementById('areaInfo').value;
+  const areaColor = document.querySelector('.color-option.selected').dataset.color;
+  
+  if (!areaName) {
+    alert('Please enter area name');
+    return;
+  }
+  
+  const corners = [];
+  for (let i = 0; i < cornerDivs.length; i++) {
+    const div = cornerDivs[i];
+    const latDeg = parseFloat(div.querySelector('.corner-lat-deg').value);
+    const latMin = parseFloat(div.querySelector('.corner-lat-min').value);
+    const latDir = div.querySelector('.corner-lat-dir').value;
+    const lonDeg = parseFloat(div.querySelector('.corner-lon-deg').value);
+    const lonMin = parseFloat(div.querySelector('.corner-lon-min').value);
+    const lonDir = div.querySelector('.corner-lon-dir').value;
+    
+    if (isNaN(latDeg) || isNaN(latMin) || isNaN(lonDeg) || isNaN(lonMin)) {
+      alert(`Invalid coordinates for corner ${i + 1}`);
+      return;
+    }
+    
+    const lat = DMSToDecimal(latDeg, latMin, latDir);
+    const lon = DMSToDecimal(lonDeg, lonMin, lonDir);
+    corners.push({ lat, lon });
+  }
+  
+  if (editingAreaId !== null) {
+    const area = areas.find(a => a.id === editingAreaId);
+    if (area) {
+      area.name = areaName;
+      area.corners = corners;
+      area.color = areaColor;
+      area.info = areaInfo;
+      areaPolygons[area.id] && map.removeLayer(areaPolygons[area.id]);
+      drawArea(area);
+    }
+  } else {
+    const newArea = {
+      id: Date.now() + Math.floor(Math.random() * 999),
+      name: areaName,
+      corners: corners,
+      color: areaColor,
+      info: areaInfo,
+      type: 'polygon'
+    };
+    areas.push(newArea);
+    drawArea(newArea);
+  }
+  
+  renderAreaList();
+  saveLocal();
+  closeAreaModal();
+}
+
+function saveCircularArea() {
+  const waypointName = document.getElementById('circularWaypointSelect').value;
+  const diameter = parseFloat(document.getElementById('circularDiameter').value);
+  const areaName = document.getElementById('areaName').value;
+  const areaInfo = document.getElementById('areaInfo').value;
+  const areaColor = document.querySelector('.color-option.selected').dataset.color;
+  
+  if (!waypointName) {
+    alert('Please select a center waypoint');
+    return;
+  }
+  
+  if (!areaName) {
+    alert('Please enter area name');
+    return;
+  }
+  
+  if (isNaN(diameter) || diameter <= 0) {
+    alert('Please enter valid diameter');
+    return;
+  }
+  
+  if (editingAreaId !== null) {
+    const area = areas.find(a => a.id === editingAreaId);
+    if (area) {
+      area.name = areaName;
+      area.centerWaypoint = waypointName;
+      area.diameter = diameter;
+      area.color = areaColor;
+      area.info = areaInfo;
+      areaPolygons[area.id] && map.removeLayer(areaPolygons[area.id]);
+      if (areaPolygons[area.id + '_labels']) {
+        areaPolygons[area.id + '_labels'].forEach(m => map.removeLayer(m));
+        delete areaPolygons[area.id + '_labels'];
+      }
+      drawArea(area);
+    }
+  } else {
+    const newArea = {
+      id: Date.now() + Math.floor(Math.random() * 999),
+      name: areaName,
+      centerWaypoint: waypointName,
+      diameter: diameter,
+      color: areaColor,
+      info: areaInfo,
+      type: 'circular'
+    };
+    areas.push(newArea);
+    drawArea(newArea);
+  }
+  
+  renderAreaList();
+  saveLocal();
+  closeAreaModal();
+}
+
+function closeAreaModal(){
+  document.getElementById('areaModal').style.display='none';
+  editingAreaId=null;
+}
+
+function deleteArea(areaId){
+  if(!confirm('Delete this area?')) return;
+  areas=areas.filter(a=>a.id!==areaId);
+  if(areaPolygons[areaId]){
+    map.removeLayer(areaPolygons[areaId]);
+    delete areaPolygons[areaId];
+  }
+  if (areaPolygons[areaId + '_labels']) {
+    areaPolygons[areaId + '_labels'].forEach(m => map.removeLayer(m));
+    delete areaPolygons[areaId + '_labels'];
+  }
+  renderAreaList();
+  saveLocal();
+}
+
+// Route saving functionality
+document.getElementById('saveRouteBtn').onclick = function() {
+  if (!routeLayer || selected.length < 2) {
+    alert('Please create a route first');
+    return;
+  }
+  
+  const modal = document.getElementById('saveRouteModal');
+  modal.style.display = 'block';
+  document.getElementById('routeName').value = '';
+  document.getElementById('routeComments').value = '';
+};
+
+document.getElementById('closeSaveRouteBtn').onclick = function() {
+  document.getElementById('saveRouteModal').style.display = 'none';
+};
+
+document.getElementById('cancelSaveRouteBtn').onclick = function() {
+  document.getElementById('saveRouteModal').style.display = 'none';
+};
+
+document.getElementById('confirmSaveRouteBtn').onclick = function() {
+  const routeName = document.getElementById('routeName').value;
+  const routeComments = document.getElementById('routeComments').value;
+  
+  if (!routeName) {
+    alert('Please enter a route name');
+    return;
+  }
+  
+  const routeWaypoints = selected.map(id => waypoints.find(w => w.id === id));
+  let totalDist = 0;
+  const legs = [];
+  
+  for (let i = 0; i < routeWaypoints.length - 1; i++) {
+    const w1 = routeWaypoints[i];
+    const w2 = routeWaypoints[i + 1];
+    const dist = haversineNM(w1.lat, w1.lon, w2.lat, w2.lon);
+    const brg = bearing(w1.lat, w1.lon, w2.lat, w2.lon);
+    totalDist += dist;
+    legs.push({ from: w1.name, to: w2.name, distance: dist, bearing: brg });
+  }
+  
+  const newRoute = {
+    id: Date.now() + Math.floor(Math.random() * 999),
+    name: routeName,
+    comments: routeComments,
+    waypoints: routeWaypoints.map(w => ({ id: w.id, name: w.name, lat: w.lat, lon: w.lon })),
+    legs: legs,
+    totalDistance: totalDist,
+    createdAt: new Date().toISOString()
+  };
+  
+  routes.push(newRoute);
+  saveLocal();
+  document.getElementById('saveRouteModal').style.display = 'none';
+  alert('Route saved successfully!');
+};
+
+function loadRoute(routeId) {
+  const route = routes.find(r => r.id === routeId);
+  if (!route) return;
+  
+  // Clear current selection
+  selected.forEach(id => {
+    if (markers[id]) {
+      markers[id].setIcon(L.divIcon({
+        html: `<div style="font-size:24px">${MARKER_TYPES[waypoints.find(w => w.id === id).markerType || 'default'].icon}</div>`,
+        className: 'custom-icon',
+        iconSize: [24, 24],
+        iconAnchor: [12, 24]
+      }));
+    }
+  });
+  selected = [];
+  
+  // Select waypoints from route
+  route.waypoints.forEach(rwp => {
+    const wp = waypoints.find(w => w.name === rwp.name);
+    if (wp) {
+      selectWaypoint(wp.id);
+    }
+  });
+  
+  // Create the route
+  makeRoute();
+  
+  // Close modal
+  document.getElementById('routeListModal').style.display = 'none';
+  
+  alert(`Route "${route.name}" loaded`);
+}
+
+function deleteRoute(routeId) {
+  if (!confirm('Delete this route?')) return;
+  routes = routes.filter(r => r.id !== routeId);
+  saveLocal();
+  document.getElementById('showRouteListBtn').onclick();
+}
+
+// Export modal functionality
+function showExportModal(){
+  const modal=document.getElementById('exportModal');
+  const waypointSelection=document.getElementById('waypointSelection');
+  const areaSelection=document.getElementById('areaSelection');
+  const routeSelection=document.getElementById('routeSelection');
+  
+  modal.style.display='block';
+  waypointSelection.style.display='none';
+  areaSelection.style.display='none';
+  routeSelection.style.display='none';
+  
+  document.querySelectorAll('.export-option').forEach(opt=>opt.classList.remove('selected'));
+  populateWaypointCheckboxes();
+  populateAreaCheckboxes();
+  populateRouteCheckboxes();
+}
+
+function populateWaypointCheckboxes(){
+  const list=document.getElementById('waypointCheckboxList');
+  list.innerHTML='';
+  waypoints.forEach(wp=>{
+    const markerType=MARKER_TYPES[wp.markerType||'default'];
+    const div=document.createElement('div');
+    div.className='checkbox-item';
+    div.innerHTML=`<label><input type="checkbox" value="${wp.id}" class="waypoint-checkbox"> <span style="color:${markerType.color};">●</span> <b>${wp.name}</b> - ${formatDMS(wp.lat,!0)}, ${formatDMS(wp.lon,!1)}</label>`;
+    list.appendChild(div);
+  });
+}
+
+function populateAreaCheckboxes(){
+  const list=document.getElementById('areaCheckboxList');
+  list.innerHTML='';
+  areas.forEach(area=>{
+    const div=document.createElement('div');
+    div.className='checkbox-item';
+    div.innerHTML=`<label><input type="checkbox" value="${area.id}" class="area-checkbox"> <span style="color:${area.color||'#8b45c1'};">●</span> <b>${area.name}</b> - ${area.type === 'circular' ? 'Circular' : area.corners.length + ' corners'}</label>`;
+    list.appendChild(div);
+  });
+}
+
+function populateRouteCheckboxes(){
+  const list=document.getElementById('routeCheckboxList');
+  list.innerHTML='';
+  routes.forEach(route=>{
+    const div=document.createElement('div');
+    div.className='checkbox-item';
+    div.innerHTML=`<label><input type="checkbox" value="${route.id}" class="route-checkbox"> <span style="color:#28a745;">●</span> <b>${route.name}</b> - ${route.totalDistance.toFixed(2)} NM</label>`;
+    list.appendChild(div);
+  });
+}
+
+document.querySelectorAll('.export-option').forEach(option=>{
+  option.onclick=function(){
+    document.querySelectorAll('.export-option').forEach(o=>o.classList.remove('selected'));
+    this.classList.add('selected');
+    const type=this.dataset.type;
+    const waypointSelection=document.getElementById('waypointSelection');
+    const areaSelection=document.getElementById('areaSelection');
+    const routeSelection=document.getElementById('routeSelection');
+    
+    waypointSelection.style.display='none';
+    areaSelection.style.display='none';
+    routeSelection.style.display='none';
+    
+    if(type==='selected-waypoints') waypointSelection.style.display='block';
+    else if(type==='selected-areas') areaSelection.style.display='block';
+    else if(type==='selected-routes') routeSelection.style.display='block';
+    else if(type==='custom'){
+      waypointSelection.style.display='block';
+      areaSelection.style.display='block';
+      routeSelection.style.display='block';
+    }
+  };
+});
+
+document.getElementById('selectAllWaypoints').onclick=function(){
+  document.querySelectorAll('.waypoint-checkbox').forEach(cb=>cb.checked=!0);
+};
+
+document.getElementById('deselectAllWaypoints').onclick=function(){
+  document.querySelectorAll('.waypoint-checkbox').forEach(cb=>cb.checked=!1);
+};
+
+document.getElementById('selectAllAreas').onclick=function(){
+  document.querySelectorAll('.area-checkbox').forEach(cb=>cb.checked=!0);
+};
+
+document.getElementById('deselectAllAreas').onclick=function(){
+  document.querySelectorAll('.area-checkbox').forEach(cb=>cb.checked=!1);
+};
+
+document.getElementById('selectAllRoutes').onclick=function(){
+  document.querySelectorAll('.route-checkbox').forEach(cb=>cb.checked=!0);
+};
+
+document.getElementById('deselectAllRoutes').onclick=function(){
+  document.querySelectorAll('.route-checkbox').forEach(cb=>cb.checked=!1);
+};
+
+document.getElementById('confirmExportBtn').onclick=function(){
+  const selectedOption=document.querySelector('.export-option.selected');
+  if(!selectedOption) return alert('Please select an export option');
+  
+  const type=selectedOption.dataset.type;
+  let exportWaypoints=[],exportAreas=[],exportRoutes=[];
+  
+  switch(type){
+    case'all':
+      exportWaypoints=waypoints;
+      exportAreas=areas;
+      exportRoutes=routes;
+      break;
+    case'waypoints-only':
+      exportWaypoints=waypoints;
+      break;
+    case'areas-only':
+      exportAreas=areas;
+      break;
+    case'routes-only':
+      exportRoutes=routes;
+      break;
+    case'selected-waypoints':
+      const selectedWpIds=Array.from(document.querySelectorAll('.waypoint-checkbox:checked')).map(cb=>parseInt(cb.value));
+      if(selectedWpIds.length===0) return alert('Please select at least one waypoint');
+      exportWaypoints=waypoints.filter(wp=>selectedWpIds.includes(wp.id));
+      break;
+    case'selected-areas':
+      const selectedAreaIds=Array.from(document.querySelectorAll('.area-checkbox:checked')).map(cb=>parseInt(cb.value));
+      if(selectedAreaIds.length===0) return alert('Please select at least one area');
+      exportAreas=areas.filter(area=>selectedAreaIds.includes(area.id));
+      break;
+    case'selected-routes':
+      const selectedRouteIds=Array.from(document.querySelectorAll('.route-checkbox:checked')).map(cb=>parseInt(cb.value));
+      if(selectedRouteIds.length===0) return alert('Please select at least one route');
+      exportRoutes=routes.filter(route=>selectedRouteIds.includes(route.id));
+      break;
+    case'custom':
+      const customWpIds=Array.from(document.querySelectorAll('.waypoint-checkbox:checked')).map(cb=>parseInt(cb.value));
+      const customAreaIds=Array.from(document.querySelectorAll('.area-checkbox:checked')).map(cb=>parseInt(cb.value));
+      const customRouteIds=Array.from(document.querySelectorAll('.route-checkbox:checked')).map(cb=>parseInt(cb.value));
+      if(customWpIds.length===0&&customAreaIds.length===0&&customRouteIds.length===0) 
+        return alert('Please select at least one waypoint, area, or route');
+      exportWaypoints=waypoints.filter(wp=>customWpIds.includes(wp.id));
+      exportAreas=areas.filter(area=>customAreaIds.includes(area.id));
+      exportRoutes=routes.filter(route=>customRouteIds.includes(route.id));
+      break;
+  }
+  
+  const exportData={waypoints:exportWaypoints,areas:exportAreas,routes:exportRoutes};
+  const blob=new Blob([JSON.stringify(exportData,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='navigation_data.json';
+  a.click();
+  closeExportModal();
+};
+
+document.getElementById('cancelExportBtn').onclick=closeExportModal;
+document.getElementById('closeExportModalBtn').onclick=closeExportModal;
+
+function closeExportModal(){
+  document.getElementById('exportModal').style.display='none';
+}
+
+async function ensureGeolocationPermission(){
+  if(!('geolocation'in navigator)) return alert('Geolocation not supported'),!1;
+  if(navigator.permissions&&navigator.permissions.query)
+    try{
+      const status=await navigator.permissions.query({name:'geolocation'});
+      return'granted'===status.state||('prompt'===status.state?new Promise(res=>{
+        navigator.geolocation.getCurrentPosition(()=>res(!0),()=>res(!1),{enableHighAccuracy:!0,maximumAge:1e3,timeout:1e4})
+      }):(alert('Location permission is denied. Enable location for this site in your browser settings.'),!1))
+    }catch(e){}
+  return new Promise(res=>{
+    navigator.geolocation.getCurrentPosition(()=>res(!0),()=>res(!1),{enableHighAccuracy:!0,maximumAge:1e3,timeout:1e4})
+  })
+}
+
+function startFlying(){
+  if(flyMarker) return alert('Already flying');
+  const isLocalhost='localhost'===location.hostname||'127.0.0.1'===location.hostname;
+  if(!('https:'===location.protocol||isLocalhost)) return alert('Geolocation needs HTTPS or localhost. Use your GitHub Pages link.');
+  
+  ensureGeolocationPermission().then(ok=>{
+    if(!ok) return;
+    gpsInfoDiv.style.display='block';
+    flyMarker=L.marker([0,0],{icon:createHelicopterIcon(0)}).addTo(map);
+    flyWatchId=navigator.geolocation.watchPosition(pos=>{
+      const lat=pos.coords.latitude,lon=pos.coords.longitude;
+      const speed=1.94384*(pos.coords.speed||0);
+      const heading=null!==pos.coords.heading&&void 0!==pos.coords.heading?pos.coords.heading:lastCourseGPS;
+      updateGPSInfo(speed,heading);
+      flyMarker.setLatLng([lat,lon]);
+      coordsOut.textContent=formatDMS(lat,!0)+', '+formatDMS(lon,!1);
+      map.setView([lat,lon]);
+      updateRouteSummary();
+      movingTrackActive&&updateMovingTrack();
+    },err=>{
+      alert('Error getting location: '+(err.message||err.code));
+    },{enableHighAccuracy:!0,maximumAge:1e3});
+  });
+}
+
+function stopFlying(){
+  flyWatchId&&navigator.geolocation.clearWatch(flyWatchId);
+  flyMarker&&map.removeLayer(flyMarker);
+  flyMarker=null;
+  flyWatchId=null;
+  gpsInfoDiv.style.display='none';
+  movingTrackActive&&stopMovingTrack();
+}
+
+function startDirectTo(){
+  if(!directSelect.value) return alert('Select waypoint first');
+  directTargetId=parseInt(directSelect.value);
+  const isLocalhost='localhost'===location.hostname||'127.0.0.1'===location.hostname;
+  if(!('https:'===location.protocol||isLocalhost)) return alert('Geolocation needs HTTPS or localhost. Use your GitHub Pages link.');
+  
+  ensureGeolocationPermission().then(ok=>{
+    if(!ok) return;
+    gpsInfoDiv.style.display='block';
+    directLayer&&map.removeLayer(directLayer);
+    directLayer=L.polyline([],{color:'#ff00ff',weight:2,dashArray:'4'}).addTo(map);
+    flyMarker||(flyMarker=L.marker([0,0],{icon:createHelicopterIcon(0)}).addTo(map));
+    flyWatchId=navigator.geolocation.watchPosition(pos=>{
+      const lat=pos.coords.latitude,lon=pos.coords.longitude;
+      const speed=1.94384*(pos.coords.speed||0);
+      const heading=null!==pos.coords.heading&&void 0!==pos.coords.heading?pos.coords.heading:lastCourseGPS;
+      updateGPSInfo(speed,heading);
+      flyMarker.setLatLng([lat,lon]);
+      coordsOut.textContent=formatDMS(lat,!0)+', '+formatDMS(lon,!1);
+      map.setView([lat,lon]);
+      const target=waypoints.find(w=>w.id===directTargetId);
+      if(!target) return;
+      const dist=haversineNM(lat,lon,target.lat,target.lon);
+      const inputSpeed=parseFloat(document.getElementById('speedInput').value)||0;
+      const etaInput=inputSpeed>0?(dist/inputSpeed*60).toFixed(1)+' min':'N/A';
+      const etaGPS=lastSpeedGPS>0?(dist/lastSpeedGPS*60).toFixed(1)+' min':'N/A';
+      const brg=bearing(lat,lon,target.lat,target.lon);
+      routeSummaryDiv.innerHTML=`Direct-To ${target.name}<br>Distance: ${dist.toFixed(2)} NM<br>Bearing: ${brg.toFixed(1)}°<br>ETA Input: ${etaInput}<br>ETA GPS: ${etaGPS}`;
+      directLayer.setLatLngs([[lat,lon],[target.lat,target.lon]]);
+      movingTrackActive&&updateMovingTrack();
+    },err=>{
+      alert('Error getting location: '+(err.message||err.code));
+    },{enableHighAccuracy:!0,maximumAge:1e3});
+  });
+}
+
+function stopDirectTo(){
+  flyWatchId&&navigator.geolocation.clearWatch(flyWatchId);
+  directLayer&&map.removeLayer(directLayer);
+  directLayer=null;
+  directTargetId=null;
+  routeSummaryDiv.innerHTML='';
+  flyMarker&&(map.removeLayer(flyMarker),flyMarker=null);
+  flyWatchId=null;
+  gpsInfoDiv.style.display='none';
+  movingTrackActive&&stopMovingTrack();
+}
+
+function saveLocal(){
+  try{
+    localStorage.setItem('map_waypoints_v6',JSON.stringify(waypoints));
+    localStorage.setItem('map_areas_v3',JSON.stringify(areas));
+    localStorage.setItem('map_routes_v1',JSON.stringify(routes));
+    console.log('Saved successfully - Waypoints:',waypoints.length,'Areas:',areas.length,'Routes:',routes.length);
+  }catch(e){
+    console.error('Save error:',e);
+    alert('Error saving data: '+e.message);
+  }
+}
+
+function loadLocal(){
+  const data=localStorage.getItem('map_waypoints_v6');
+  if(data) try{
+    const arr=JSON.parse(data);
+    arr.forEach(w=>addWaypointNoSave(w.lat,w.lon,w.name,w.markerType||'default',w.info||''));
+    console.log('Loaded waypoints:',arr.length);
+  }catch(e){console.error('Error loading waypoints:',e)}
+  
+  const areaData=localStorage.getItem('map_areas_v3');
+  if(areaData) try{
+    const loadedAreas=JSON.parse(areaData);
+    console.log('Raw area data from localStorage:',loadedAreas);
+    loadedAreas.forEach(area=>{
+      area.color||(area.color=area.type==='circular'?'#ff0000':'#8b45c1');
+      area.info||(area.info='');
+      area.type||(area.type='polygon');
+      areas.push(area);
+      drawArea(area);
+    });
+    renderAreaList();
+    console.log('Loaded areas successfully:',areas.length);
+  }catch(e){
+    console.error('Error loading areas:',e);
+    alert('Error loading areas: '+e.message);
+  }
+  
+  const routeData=localStorage.getItem('map_routes_v1');
+  if(routeData) try{
+    const loadedRoutes=JSON.parse(routeData);
+    routes.push(...loadedRoutes);
+    console.log('Loaded routes:',routes.length);
+  }catch(e){console.error('Error loading routes:',e)}
+}
+
+recenterBtn.onclick=()=>{
+  flyMarker?map.setView(flyMarker.getLatLng()):alert('Flying or Direct-To mode not active');
+};
+
+document.getElementById('goBtn').onclick=()=>{
+  const latDeg=parseFloat(document.getElementById('latDeg').value);
+  const latMin=parseFloat(document.getElementById('latMin').value);
+  const latDir=document.getElementById('latDir').value;
+  const lonDeg=parseFloat(document.getElementById('lonDeg').value);
+  const lonMin=parseFloat(document.getElementById('lonMin').value);
+  const lonDir=document.getElementById('lonDir').value;
+  if(isNaN(latDeg)||isNaN(latMin)||isNaN(lonDeg)||isNaN(lonMin)) return alert('Invalid coordinates');
+  const lat=DMSToDecimal(latDeg,latMin,latDir);
+  const lon=DMSToDecimal(lonDeg,lonMin,lonDir);
+  map.setView([lat,lon],Math.max(map.getZoom(),12));
+  addWaypoint(lat,lon,'Manual');
+};
+
+document.getElementById('routeBtn').onclick=makeRoute;
+document.getElementById('clearRouteBtn').onclick=clearRoute;
+document.getElementById('saveBtn').onclick=()=>{saveLocal();alert('Saved waypoints, areas, and routes!')};
+document.getElementById('exportBtn').onclick=showExportModal;
+document.getElementById('importBtn').onclick=()=>{
+  try{
+    const importData=JSON.parse(document.getElementById('jsonArea').value);
+    if(importData.waypoints) importData.waypoints.forEach(w=>addWaypoint(w.lat,w.lon,w.name,w.markerType||'default',w.info||''));
+    if(importData.areas){
+      importData.areas.forEach(area=>{
+        area.color||(area.color=area.type==='circular'?'#ff0000':'#8b45c1');
+        area.info||(area.info='');
+        area.type||(area.type='polygon');
+        area.id||(area.id=Date.now()+Math.floor(999*Math.random()));
+        areas.push(area);
+        drawArea(area);
+      });
+      renderAreaList();
+    }
+    if(importData.routes){
+      importData.routes.forEach(route=>{
+        route.id||(route.id=Date.now()+Math.floor(999*Math.random()));
+        routes.push(route);
+      });
+    }
+    saveLocal();
+    alert('Imported successfully');
+  }catch(e){alert('Invalid JSON: '+e.message)}
+};
+
+document.getElementById('startFlyBtn').onclick=startFlying;
+document.getElementById('stopFlyBtn').onclick=stopFlying;
+document.getElementById('startDirectBtn').onclick=startDirectTo;
+document.getElementById('stopDirectBtn').onclick=stopDirectTo;
+document.getElementById('createAreaBtn').onclick=()=>showAreaModal(!1);
+document.getElementById('setCornerBtn').onclick=()=>{
+  const numCorners=parseInt(document.getElementById('numCorners').value);
+  if(isNaN(numCorners)||numCorners<3) return alert('Please enter at least 3 corners');
+  createCornerInputs(numCorners);
+};
+document.getElementById('saveAreaBtn').onclick=saveArea;
+document.getElementById('saveCircularAreaBtn').onclick=saveCircularArea;
+document.getElementById('cancelAreaBtn').onclick=closeAreaModal;
+document.getElementById('cancelCircularAreaBtn').onclick=closeAreaModal;
+document.getElementById('editAreaBtn').onclick=()=>{
+  const areaId=parseInt(editAreaSelect.value);
+  if(!areaId) return alert('Please select an area to edit');
+  showAreaModal(!0,areaId);
+};
+document.getElementById('deleteAreaBtn').onclick=()=>{
+  const areaId=parseInt(deleteAreaSelect.value);
+  if(!areaId) return alert('Please select an area to delete');
+  deleteArea(areaId);
+};
+
+loadLocal();
+
+if('serviceWorker'in navigator) window.addEventListener('load',()=>{
+  navigator.serviceWorker.register('./sw.js').then(reg=>console.log('SW registered',reg.scope))
+    .catch(err=>console.error('SW registration failed',err));
+});
+
+}
+checkAuthentication();
+</script>
+</body>
+</html>
