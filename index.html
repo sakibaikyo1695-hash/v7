@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8" />
-<title>SLAP-GAP</title>
+<title>SLAP-GAP BY LT CDR SADMAN, P NO 3223</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2a9df4">
@@ -224,7 +224,7 @@ input[type=text],input[type=number],input[type=password],textarea,select{width:1
     <textarea id="jsonArea" rows="3" placeholder='{"waypoints":[...],"areas":[...],"routes":[...]}'></textarea>
     <button class="btn" id="importBtn">📥 Import</button>
 
-    <div id="credit">© 2024 Sadman</div>
+    <div id="credit">© Lt Cdr Sadman, P No 3223</div>
   </div>
 
   <!-- Waypoint List Modal -->
@@ -377,7 +377,7 @@ input[type=text],input[type=number],input[type=password],textarea,select{width:1
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const CORRECT_PASSWORD='sadman';
+const CORRECT_PASSWORD='Lilymaafroz245';
 function checkAuthentication(){const storedHash=localStorage.getItem('auth_hash');storedHash===btoa(CORRECT_PASSWORD)?showApp():showAuthModal()}
 function showAuthModal(){document.getElementById('authModal').style.display='block',document.getElementById('mainApp').style.display='none'}
 function showApp(){document.getElementById('authModal').style.display='none',document.getElementById('mainApp').style.display='block',initializeApp()}
